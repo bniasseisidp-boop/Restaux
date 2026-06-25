@@ -1,6 +1,7 @@
 import { useEffect, useRef, lazy, Suspense } from 'react'
 import { gsap } from 'gsap'
 import { ChevronDown } from 'lucide-react'
+import { useTheme } from '../../context/ThemeContext'
 
 const RestaurantScene = lazy(() => import('./RestaurantScene'))
 
@@ -9,6 +10,7 @@ const scrollTo = (id) => {
 }
 
 export default function Hero() {
+  const { isDark } = useTheme()
   const titleRef = useRef(null)
   const subtitleRef = useRef(null)
   const ctaRef = useRef(null)
@@ -54,12 +56,14 @@ export default function Hero() {
         </Suspense>
       </div>
 
-      {/* Dark overlay gradient */}
+      {/* Overlay gradient — dark/light aware */}
       <div
         ref={overlayRef}
         className="absolute inset-0 z-10"
         style={{
-          background: 'linear-gradient(135deg, rgba(10,10,10,0.92) 0%, rgba(20,0,5,0.85) 50%, rgba(10,10,10,0.90) 100%)',
+          background: isDark
+            ? 'linear-gradient(135deg, rgba(10,10,10,0.92) 0%, rgba(20,0,5,0.85) 50%, rgba(10,10,10,0.90) 100%)'
+            : 'linear-gradient(135deg, rgba(245,241,235,0.93) 0%, rgba(255,245,240,0.88) 50%, rgba(245,241,235,0.93) 100%)',
         }}
       />
 
