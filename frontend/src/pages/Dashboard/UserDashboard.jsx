@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
   ShoppingBag, Calendar, User, LogOut, Home,
   Clock, ChefHat, Package, CheckCircle, XCircle, Truck,
-  Receipt, MapPin, Phone, Mail, Edit3
+  Receipt, MapPin, Phone, Mail, DollarSign, CreditCard, AlertCircle, Download
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -33,6 +33,72 @@ const TABS = [
   { id: 'reservations', label: 'Réservations', icon: Calendar },
   { id: 'profile',      label: 'Mon Profil',  icon: User },
 ]
+
+function printOrderReceipt(order, user) {
+  const win = window.open('', '_blank', 'width=420,height=680')
+  if (!win) return
+  const date = order.created_at
+    ? new Date(order.created_at).toLocaleString('fr-FR')
+    : new Date().toLocaleString('fr-FR')
+  const items = Array.isArray(order.items) ? order.items : []
+  const total = Number(order.total_price) || Number(order.total) || 0
+
+  win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Reçu #${order.id}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Georgia, serif; padding: 28px; max-width: 360px; margin: 0 auto; color: #111; }
+  h1 { text-align:center; font-size:22px; letter-spacing:2px; color:#e01e37; margin-bottom:2px; }
+  .center { text-align:center; }
+  .sub { font-size:11px; color:#666; }
+  .divider { border-top:2px solid #e01e37; margin: 14px 0; }
+  .dashed { border-top:1px dashed #ccc; margin: 10px 0; }
+  .row { display:flex; justify-content:space-between; font-size:13px; padding: 4px 0; }
+  .label { color:#666; }
+  .value { font-weight:600; }
+  .item-row { display:flex; justify-content:space-between; font-size:12px; padding: 5px 0; border-bottom:1px solid #f0f0f0; }
+  .total-box { background:#fff5f5; border:2px solid #e01e37; border-radius:8px; padding:12px 16px; margin:14px 0; display:flex; justify-content:space-between; align-items:center; }
+  .total-label { font-size:13px; color:#666; }
+  .total-amount { font-size:22px; font-weight:bold; color:#e01e37; }
+  .status-ok { display:inline-block; background:#d1fae5; border:1px solid #10b981; color:#065f46; font-size:11px; padding:4px 12px; border-radius:20px; font-weight:600; }
+  .footer { text-align:center; font-size:11px; color:#888; margin-top:18px; }
+  @media print { body { padding: 10px; } }
+</style></head>
+<body>
+  <h1>★ LE CHEF ★</h1>
+  <p class="center sub">Restaurant & Café • Dieuppeul I, Dakar</p>
+  <p class="center sub">+221 33 824 13 33</p>
+  <div class="divider"></div>
+  <p style="text-align:center;font-weight:600;font-size:14px;letter-spacing:1px;">REÇU DE COMMANDE</p>
+  <p style="text-align:center;font-size:11px;color:#999;margin-top:3px;">N° ${order.id} • ${date}</p>
+  <div class="dashed"></div>
+  <div class="row"><span class="label">Client</span><span class="value">${user?.name || order.user_name || '–'}</span></div>
+  <div class="row"><span class="label">E-mail</span><span class="value">${user?.email || '–'}</span></div>
+  <div class="row"><span class="label">Type</span><span class="value">${order.delivery_type === 'delivery' ? 'Livraison' : 'Sur place'}</span></div>
+  <div class="dashed"></div>
+  <p style="font-size:11px;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Articles commandés</p>
+  ${items.map(it => `
+    <div class="item-row">
+      <span>${it.name || it.product?.name || '–'} × ${it.quantity || 1}</span>
+      <span>${Number((it.price || 0) * (it.quantity || 1)).toLocaleString('fr-FR')} F</span>
+    </div>`).join('') || '<p style="font-size:12px;color:#aaa;padding:6px 0">Détails non disponibles</p>'}
+  <div class="total-box">
+    <span class="total-label">TOTAL</span>
+    <span class="total-amount">${total.toLocaleString('fr-FR')} FCFA</span>
+  </div>
+  <div style="text-align:center;margin:8px 0">
+    <span class="status-ok">✓ ${order.status === 'delivered' ? 'LIVRÉ' : 'CONFIRMÉ'}</span>
+  </div>
+  <div class="divider"></div>
+  <div class="footer">
+    <p>Merci de votre confiance !</p>
+    <p style="margin-top:6px;color:#e01e37">★ Restaurant Le Chef ★</p>
+    <p style="margin-top:4px;color:#bbb;font-size:9px;letter-spacing:2px">MULTI BRAIN TECH</p>
+  </div>
+  <script>window.onload = () => window.print()<\/script>
+</body></html>`)
+  win.document.close()
+}
 
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState('orders')
@@ -257,13 +323,24 @@ export default function UserDashboard() {
                             </p>
                           )}
                         </div>
-                        <div className="sm:text-right">
+                        <div className="sm:text-right flex-shrink-0">
                           <p className="font-playfair text-or font-bold text-lg">
                             {(Number(order.total_price) || Number(order.total) || 0).toLocaleString()} FCFA
                           </p>
-                          <button className="flex items-center gap-1.5 text-blanc/20 hover:text-blanc/50 text-xs mt-1.5 sm:ml-auto transition-colors">
-                            <Receipt size={11} /> Ticket
-                          </button>
+                          {(order.status === 'confirmed' || order.status === 'delivered') && (
+                            <motion.button
+                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                              onClick={() => printOrderReceipt(order, user)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold mt-2 sm:ml-auto transition-all"
+                              style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981' }}>
+                              <Download size={11} /> Télécharger reçu
+                            </motion.button>
+                          )}
+                          {order.status === 'pending' && (
+                            <p className="text-[10px] mt-1.5 flex items-center gap-1" style={{ color: 'rgba(245,158,11,0.7)' }}>
+                              <Clock size={9} /> En attente de confirmation
+                            </p>
+                          )}
                         </div>
                       </motion.div>
                     ))}
@@ -291,43 +368,87 @@ export default function UserDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {reservations.map((res, i) => (
+                    {reservations.map((res, i) => {
+                      const payStatus = res.payment_status || 'unpaid'
+                      const payConfig = {
+                        unpaid:  { label: 'Non payé',       color: '#ef4444', icon: AlertCircle },
+                        pending: { label: 'Paiement en attente', color: '#f59e0b', icon: Clock },
+                        paid:    { label: 'Payé ✓',          color: '#10b981', icon: CheckCircle },
+                      }[payStatus] || { label: 'Non payé', color: '#ef4444', icon: AlertCircle }
+                      const PayIcon = payConfig.icon
+                      const depositAmt = res.deposit_amount ? Number(res.deposit_amount) : 0
+                      const pmLabel = { wave: 'Wave', orange_money: 'Orange Money', cash: 'Espèces', other: 'Autre' }[res.payment_method] || null
+
+                      return (
                       <motion.div key={res.id}
                         initial={{ opacity: 0, x: -15 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.06 }}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-xl"
+                        className="p-5 rounded-xl"
                         style={{
                           background: 'linear-gradient(135deg, #111 0%, #0d0d0d 100%)',
-                          border: '1px solid rgba(255,255,255,0.06)',
+                          border: `1px solid ${payStatus === 'paid' ? 'rgba(16,185,129,0.15)' : payStatus === 'pending' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.06)'}`,
                         }}>
-                        <div>
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0">
                               <span className="text-green-400 text-[10px] font-bold">#{res.id}</span>
                             </div>
                             <StatusBadge status={res.status} />
                           </div>
-                          <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-blanc/35 text-xs">
-                            <span className="flex items-center gap-1.5">
-                              <Calendar size={11} className="text-green-400/50" />
-                              {res.date || '–'}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <Clock size={11} className="text-green-400/50" />
-                              {res.time || '–'}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <User size={11} className="text-green-400/50" />
-                              {res.guests || 1} personne{(res.guests || 1) > 1 ? 's' : ''}
-                            </span>
-                          </div>
-                          {res.message && (
-                            <p className="text-blanc/20 text-xs italic mt-2">"{res.message}"</p>
-                          )}
+                          {/* Payment status badge */}
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold flex-shrink-0"
+                                style={{ background: `${payConfig.color}12`, border: `1px solid ${payConfig.color}30`, color: payConfig.color }}>
+                            <PayIcon size={9} /> {payConfig.label}
+                          </span>
                         </div>
+
+                        <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-blanc/35 text-xs mb-3">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar size={11} className="text-green-400/50" />
+                            {res.date ? new Date(res.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '–'}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Clock size={11} className="text-green-400/50" />
+                            {res.time || '–'}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <User size={11} className="text-green-400/50" />
+                            {res.guests || 1} personne{(res.guests || 1) > 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        {/* Payment details */}
+                        {depositAmt > 0 && (
+                          <div className="flex items-center justify-between px-3 py-2 rounded-lg mt-2"
+                               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                              <CreditCard size={11} />
+                              <span>Acompte ({pmLabel || '–'})</span>
+                              {res.payment_reference && <span style={{ color: 'rgba(255,255,255,0.2)' }}>· Réf: {res.payment_reference}</span>}
+                            </div>
+                            <span className="text-xs font-bold" style={{ color: '#d4a017' }}>{depositAmt.toLocaleString()} FCFA</span>
+                          </div>
+                        )}
+
+                        {/* Pending payment instructions */}
+                        {payStatus === 'pending' && (
+                          <div className="mt-2 px-3 py-2 rounded-lg text-xs"
+                               style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                            ⏳ Votre paiement est en cours de vérification par l'équipe Le Chef. Confirmation sous 2h.
+                          </div>
+                        )}
+                        {payStatus === 'unpaid' && res.status !== 'cancelled' && (
+                          <div className="mt-2 px-3 py-2 rounded-lg text-xs"
+                               style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)', color: '#ef4444' }}>
+                            ⚠️ Acompte non reçu. Contactez-nous au +221 33 824 13 33.
+                          </div>
+                        )}
+
+                        {res.notes && <p className="text-blanc/20 text-xs italic mt-2">"{res.notes}"</p>}
                       </motion.div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </motion.div>

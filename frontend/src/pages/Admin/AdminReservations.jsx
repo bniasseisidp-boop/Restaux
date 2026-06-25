@@ -3,8 +3,259 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { adminApi, reservationsApi } from '../../utils/api'
 import { useTheme } from '../../context/ThemeContext'
 import { ac } from '../../utils/adminTheme'
-import { Calendar, Clock, Users, CheckCircle, XCircle, Search, CreditCard, Printer, DollarSign } from 'lucide-react'
+import { Calendar, Clock, Users, CheckCircle, XCircle, Search, CreditCard, Printer, DollarSign, Plus, X, User, Phone, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+const TIMES = ['09:30','10:00','11:00','12:00','12:30','13:00','13:30','19:00','19:30','20:00','20:30','21:00']
+const PRICE_PER_GUEST = 5000
+const DEPOSIT_RATE = 0.30
+
+/* ─── Create Reservation Modal ─── */
+function CreateReservationModal({ onClose, onCreated, isDark }) {
+  const t = ac(isDark)
+  const [users, setUsers] = useState([])
+  const [userQuery, setUserQuery] = useState('')
+  const [userDropOpen, setUserDropOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [form, setForm] = useState({ date: '', time: '', guests: 2, name: '', phone: '', notes: '', payment_method: 'cash', payment_reference: '' })
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    adminApi.users().then(r => setUsers(Array.isArray(r.data?.users) ? r.data.users : [])).catch(() => {})
+  }, [])
+
+  const deposit = Math.round(form.guests * PRICE_PER_GUEST * DEPOSIT_RATE)
+  const today = new Date().toISOString().split('T')[0]
+
+  const filteredUsers = users.filter(u =>
+    u.name?.toLowerCase().includes(userQuery.toLowerCase()) ||
+    u.email?.toLowerCase().includes(userQuery.toLowerCase())
+  ).slice(0, 6)
+
+  const selectUser = (u) => {
+    setSelectedUser(u)
+    setUserQuery(u.name)
+    setUserDropOpen(false)
+    setForm(f => ({ ...f, name: u.name, phone: u.phone || '' }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await reservationsApi.create({
+        user_name: form.name || selectedUser?.name,
+        user_phone: form.phone || selectedUser?.phone || '',
+        user_email: selectedUser?.email || '',
+        date: form.date,
+        time: form.time,
+        guests: form.guests,
+        notes: form.notes,
+        payment_method: form.payment_method,
+        payment_reference: form.payment_reference || undefined,
+      })
+      toast.success('Réservation créée !')
+      onCreated(res.data?.reservation)
+    } catch {
+      toast.error('Erreur lors de la création')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <motion.div
+        initial={{ scale: 0.95, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.95, y: 20, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl"
+        style={{ background: t.modalBg, border: `1px solid ${t.modalBorder}`, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+
+        <div className="flex items-center justify-between px-6 py-5 sticky top-0 z-10"
+             style={{ borderBottom: `1px solid ${t.divider}`, background: t.modalBg }}>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                 style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)' }}>
+              <Calendar size={16} style={{ color: '#10b981' }} />
+            </div>
+            <div>
+              <h3 className="font-playfair text-base font-bold" style={{ color: t.text }}>Nouvelle Réservation</h3>
+              <p className="text-xs" style={{ color: t.textMuted }}>Créer pour un client</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: t.inputBg, color: t.textMuted }}>
+            <X size={15} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* User search */}
+          <div>
+            <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>Client (avec compte)</label>
+            <div className="relative">
+              <div className="flex items-center gap-2" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '8px 12px' }}>
+                <User size={13} style={{ color: t.textMuted }} />
+                <input
+                  value={userQuery}
+                  onChange={e => { setUserQuery(e.target.value); setUserDropOpen(true) }}
+                  onFocus={() => setUserDropOpen(true)}
+                  placeholder="Chercher un client…"
+                  className="flex-1 text-sm bg-transparent focus:outline-none"
+                  style={{ color: t.text }}
+                />
+                <ChevronDown size={12} style={{ color: t.textFaint }} />
+              </div>
+              <AnimatePresence>
+                {userDropOpen && filteredUsers.length > 0 && (
+                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                    className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-20"
+                    style={{ background: t.cardBg2, border: `1px solid ${t.cardBorder}`, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+                    {filteredUsers.map(u => (
+                      <button key={u.id} type="button" onMouseDown={() => selectUser(u)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors"
+                        style={{ borderBottom: `1px solid ${t.divider}` }}
+                        onMouseEnter={e => e.currentTarget.style.background = t.rowHover}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                             style={{ background: 'rgba(224,30,55,0.12)', border: '1px solid rgba(224,30,55,0.2)' }}>
+                          <span className="text-[9px] font-bold text-rouge">{u.name?.[0]}</span>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold" style={{ color: t.text }}>{u.name}</p>
+                          <p className="text-[10px]" style={{ color: t.textFaint }}>{u.email}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Manual name/phone (override or no account) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>Nom *</label>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required
+                placeholder="Nom du client"
+                className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>Téléphone</label>
+              <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="+221 77…"
+                className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }} />
+            </div>
+          </div>
+
+          {/* Date + Time */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>Date *</label>
+              <input type="date" min={today} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required
+                className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text, colorScheme: isDark ? 'dark' : 'light' }} />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>Heure *</label>
+              <select value={form.time} onChange={e => setForm(f => ({ ...f, time: e.target.value }))} required
+                className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                style={{ background: t.selectBg, border: `1px solid ${t.selectBorder}`, color: t.selectColor }}>
+                <option value="">Choisir…</option>
+                {TIMES.map(t => <option key={t} value={t} style={{ background: t }}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Guests */}
+          <div>
+            <label className="text-[10px] uppercase tracking-widest mb-2 block" style={{ color: t.textMuted }}>Personnes</label>
+            <div className="flex gap-2 flex-wrap">
+              {[1,2,3,4,5,6,7,8].map(n => (
+                <button key={n} type="button" onClick={() => setForm(f => ({ ...f, guests: n }))}
+                  className="w-9 h-9 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    background: form.guests === n ? '#10b981' : t.inputBg,
+                    border: `1px solid ${form.guests === n ? '#10b981' : t.inputBorder}`,
+                    color: form.guests === n ? '#fff' : t.textMuted,
+                  }}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Payment method */}
+          <div>
+            <label className="text-[10px] uppercase tracking-widest mb-2 block" style={{ color: t.textMuted }}>Mode de paiement acompte</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[{id:'cash',label:'Espèces',color:'#10b981'},{id:'wave',label:'Wave',color:'#1a73e8'},{id:'orange_money',label:'Orange Money',color:'#FF6600'}].map(pm => (
+                <button key={pm.id} type="button" onClick={() => setForm(f => ({ ...f, payment_method: pm.id }))}
+                  className="py-2 rounded-xl text-xs font-semibold transition-all"
+                  style={{
+                    background: form.payment_method === pm.id ? `${pm.color}15` : t.inputBg,
+                    border: `1px solid ${form.payment_method === pm.id ? pm.color + '50' : t.inputBorder}`,
+                    color: form.payment_method === pm.id ? pm.color : t.textMuted,
+                  }}>
+                  {pm.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {form.payment_method !== 'cash' && (
+            <div>
+              <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>Référence transaction</label>
+              <input value={form.payment_reference} onChange={e => setForm(f => ({ ...f, payment_reference: e.target.value }))}
+                placeholder="TX-XXXXXXXX"
+                className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }} />
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>Notes</label>
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2}
+              placeholder="Occasion spéciale…"
+              className="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none resize-none"
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }} />
+          </div>
+
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl"
+               style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
+            <span className="text-sm" style={{ color: t.textMuted }}>Acompte (30% · {form.guests} pers.)</span>
+            <span className="font-playfair font-bold text-xl" style={{ color: '#10b981' }}>{deposit.toLocaleString()} FCFA</span>
+          </div>
+
+          <div className="flex gap-3">
+            <motion.button type="submit" disabled={loading}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold"
+              style={{ background: '#10b981', color: '#fff', opacity: loading ? 0.7 : 1 }}>
+              {loading
+                ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+                    className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white" />
+                : <><CheckCircle size={15} /> Créer la réservation</>}
+            </motion.button>
+            <motion.button type="button" onClick={onClose}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              className="py-3 px-5 rounded-xl text-sm font-semibold"
+              style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.textMuted }}>
+              Annuler
+            </motion.button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  )
+}
 
 const STATUSES = [
   { value: '',          label: 'Toutes',     color: '#888888' },
@@ -112,6 +363,7 @@ export default function AdminReservations() {
   const [search, setSearch] = useState('')
   const [updating, setUpdating] = useState(null)
   const [confirming, setConfirming] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
 
   const fetchReservations = useCallback(() => {
     adminApi.reservations(filter ? { status: filter } : {})
@@ -162,16 +414,32 @@ export default function AdminReservations() {
 
   return (
     <div className="min-h-screen p-6 lg:p-8 transition-colors duration-300" style={{ background: t.pageBg }}>
+      <AnimatePresence>
+        {showCreate && (
+          <CreateReservationModal isDark={isDark} onClose={() => setShowCreate(false)}
+            onCreated={(res) => { setShowCreate(false); if (res) setReservations(prev => [res, ...prev]); toast.success('Réservation créée !') }} />
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-1 h-8 rounded-full" style={{ background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
-          <div>
-            <h1 className="font-playfair text-2xl lg:text-3xl font-bold" style={{ color: t.text }}>
-              Réser<span className="text-rouge">vations</span>
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: t.textMuted }}>{reservations.length} réservations au total</p>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-8 rounded-full" style={{ background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
+            <div>
+              <h1 className="font-playfair text-2xl lg:text-3xl font-bold" style={{ color: t.text }}>
+                Réser<span className="text-rouge">vations</span>
+              </h1>
+              <p className="text-sm mt-0.5" style={{ color: t.textMuted }}>{reservations.length} réservations au total</p>
+            </div>
           </div>
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: '#10b981', color: '#fff', boxShadow: '0 4px 14px rgba(16,185,129,0.3)' }}>
+            <Plus size={15} />
+            <span className="hidden sm:inline">Nouvelle réservation</span>
+          </motion.button>
         </div>
       </motion.div>
 

@@ -1,10 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 
+const TICKER_ITEMS = [
+  '★ Restaurant Le Chef',
+  '— Thiéboudienne Royal',
+  '— Yassa Poulet',
+  '— Brochettes Mixtes',
+  '— Pack Romantique',
+  '★ Dieuppeul I, Dakar',
+  '— Réservez votre table',
+  '— Cuisine authentique',
+  '★ Depuis 2018',
+  '— Saveurs du Sénégal',
+  '— Chef à votre service',
+]
+
 export default function LoadingScreen() {
   const logoRef = useRef(null)
   const lineRef = useRef(null)
   const subtitleRef = useRef(null)
+  const tickerRef = useRef(null)
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -33,15 +48,31 @@ export default function LoadingScreen() {
       if (prog >= 100) clearInterval(interval)
     }, 80)
 
+    // Ticker scroll animation
+    if (tickerRef.current) {
+      const inner = tickerRef.current
+      const totalWidth = inner.scrollWidth / 2
+      gsap.fromTo(inner,
+        { x: 0 },
+        { x: -totalWidth, duration: 18, ease: 'none', repeat: -1 }
+      )
+    }
+
     return () => { clearInterval(interval); tl.kill() }
   }, [])
 
+  const tickerText = [...TICKER_ITEMS, ...TICKER_ITEMS]
+
   return (
-    <div className="loading-screen">
+    <div className="loading-screen overflow-hidden">
       {/* Background glow */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl"
-             style={{ background: 'radial-gradient(circle, rgba(224,30,55,0.08) 0%, transparent 70%)' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-3xl"
+             style={{ background: 'radial-gradient(circle, rgba(224,30,55,0.06) 0%, transparent 70%)' }} />
+        <div className="absolute top-0 left-0 right-0 h-px"
+             style={{ background: 'linear-gradient(90deg, transparent, rgba(224,30,55,0.2), transparent)' }} />
+        <div className="absolute bottom-0 left-0 right-0 h-px"
+             style={{ background: 'linear-gradient(90deg, transparent, rgba(212,160,23,0.15), transparent)' }} />
       </div>
 
       <div className="flex flex-col items-center gap-6 relative z-10">
@@ -90,18 +121,48 @@ export default function LoadingScreen() {
             <div className="h-full rounded-full transition-all duration-100"
                  style={{
                    width: `${progress}%`,
-                   background: 'linear-gradient(90deg, #c01a30, #e01e37)',
-                   boxShadow: '0 0 6px rgba(224,30,55,0.5)',
+                   background: 'linear-gradient(90deg, #c01a30, #e01e37, #d4a017)',
+                   boxShadow: '0 0 8px rgba(224,30,55,0.6)',
                  }} />
           </div>
         </div>
       </div>
 
-      {/* Signature */}
-      <div className="absolute bottom-8 text-center">
-        <p style={{ color: 'rgba(255,255,255,0.12)', fontSize: 9, letterSpacing: '0.4em' }} className="uppercase">
-          Powered by <span style={{ color: 'rgba(224,30,55,0.35)' }}>Multi Brain Tech</span>
-        </p>
+      {/* ── Ticker strip ── */}
+      <div className="absolute bottom-20 left-0 right-0 overflow-hidden"
+           style={{ borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)', padding: '7px 0' }}>
+        <div className="flex whitespace-nowrap" ref={tickerRef} style={{ willChange: 'transform' }}>
+          {tickerText.map((item, i) => (
+            <span key={i} className="mx-4 text-[10px] font-semibold tracking-widest uppercase flex-shrink-0"
+                  style={{ color: item.startsWith('★') ? 'rgba(224,30,55,0.7)' : 'rgba(255,255,255,0.2)' }}>
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Designer credit ── */}
+      <div className="absolute bottom-5 left-0 right-0 flex items-center justify-center gap-3">
+        <div className="h-px flex-1 max-w-16" style={{ background: 'linear-gradient(to right, transparent, rgba(212,160,23,0.3))' }} />
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-1 rounded-full" style={{ background: '#e01e37' }} />
+          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 9, letterSpacing: '0.35em' }} className="uppercase font-semibold">
+            Designed by
+          </p>
+          <span style={{
+            background: 'linear-gradient(135deg, #e01e37, #d4a017)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontSize: 9,
+            letterSpacing: '0.3em',
+            fontWeight: 700,
+          }} className="uppercase">
+            Multi Brain Tech
+          </span>
+          <div className="w-1 h-1 rounded-full" style={{ background: '#d4a017' }} />
+        </div>
+        <div className="h-px flex-1 max-w-16" style={{ background: 'linear-gradient(to left, transparent, rgba(212,160,23,0.3))' }} />
       </div>
     </div>
   )

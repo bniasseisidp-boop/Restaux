@@ -35,6 +35,45 @@
     --or:         #d4a017;
   }
 
+  /* ── Light theme: override CSS channel vars so all Tailwind classes adapt ── */
+  .light-theme {
+    --c-noir:        245 241 235;
+    --c-noir-900:    245 241 235;
+    --c-noir-800:    237 231 222;
+    --c-noir-700:    255 255 255;
+    --c-noir-600:    228 222 213;
+    --c-noir-500:    210 204 196;
+    --c-blanc:       26 22 17;
+    --c-blanc-soft:  40 34 28;
+    --c-blanc-muted: 80 72 62;
+    --noir:          #f5f1eb;
+    --noir-800:      #ede7de;
+    --noir-700:      #ffffff;
+    --blanc:         #1a1611;
+  }
+
+  .light-theme body {
+    background-color: rgb(245 241 235);
+    color: rgb(26 22 17);
+  }
+
+  /* Sections with hardcoded bg classes get overridden */
+  .light-theme .section-title { color: rgb(var(--c-blanc)); }
+  .light-theme .nav-link { color: rgba(var(--c-blanc) / 0.65); }
+  .light-theme .nav-link:hover { color: rgb(var(--c-blanc)); }
+  .light-theme .glass-card {
+    background: rgba(255,255,255,0.85);
+    border-color: rgba(0,0,0,0.07);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .light-theme .input-field {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.12);
+    color: #1a1611;
+  }
+  .light-theme .input-field::placeholder { color: rgba(26,22,17,0.35); }
+  .light-theme ::-webkit-scrollbar-track { background: rgb(245 241 235); }
+
   * {
     margin: 0;
     padding: 0;
@@ -145,9 +184,13 @@
   }
 
   .input-field {
-    @apply w-full bg-noir-700 border border-white/10 text-blanc placeholder-blanc/30
-           px-4 py-3 text-sm focus:outline-none focus:border-rouge-700 transition-colors
-           duration-300;
+    @apply w-full border text-blanc placeholder-blanc/30
+           px-4 py-3 rounded-xl text-sm focus:outline-none transition-colors duration-300;
+    background: rgb(var(--c-noir-700));
+    border-color: rgba(var(--c-blanc) / 0.1);
+  }
+  .input-field:focus {
+    border-color: rgb(var(--c-rouge));
   }
 
   .floating-label {

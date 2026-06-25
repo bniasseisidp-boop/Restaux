@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { adminApi, ordersApi } from '../../utils/api'
+import { adminApi, ordersApi, productsApi, packsApi } from '../../utils/api'
 import { useTheme } from '../../context/ThemeContext'
 import { ac } from '../../utils/adminTheme'
 import {
   Clock, CheckCircle, Truck, XCircle, Search,
-  Plus, Trash2, Printer, X, ShoppingBag, User
+  Plus, Trash2, Printer, X, ShoppingBag, Minus, Package, ChevronDown
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -77,20 +77,147 @@ function printReceipt(order) {
   win.document.close()
 }
 
-/* ─── Walk-In Order Modal (module level) ─── */
+/* ─── Catalog item row with searchable dropdown ─── */
+function CatalogItemRow({ item, index, catalog, t, onUpdate, onRemove, canRemove }) {
+  const [query, setQuery] = useState(item.name)
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  const suggestions = catalog.filter(c =>
+    c.name.toLowerCase().includes(query.toLowerCase())
+  ).slice(0, 8)
+
+  useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const selectItem = (cat) => {
+    setQuery(cat.name)
+    setOpen(false)
+    onUpdate(index, { name: cat.name, price: String(cat.price), qty: item.qty || 1 })
+  }
+
+  const handleNameChange = (v) => {
+    setQuery(v)
+    setOpen(true)
+    onUpdate(index, { ...item, name: v })
+  }
+
+  return (
+    <div className="p-3 rounded-xl space-y-2" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${t.divider}` }}>
+      {/* Name search */}
+      <div className="relative" ref={ref}>
+        <div className="flex items-center gap-2" style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10, padding: '7px 10px' }}>
+          <Package size={13} style={{ color: t.textMuted, flexShrink: 0 }} />
+          <input
+            value={query}
+            onChange={e => handleNameChange(e.target.value)}
+            onFocus={() => setOpen(true)}
+            placeholder="Chercher un plat / pack…"
+            className="flex-1 text-sm bg-transparent focus:outline-none"
+            style={{ color: t.text }}
+          />
+          <ChevronDown size={12} style={{ color: t.textFaint, flexShrink: 0 }} />
+        </div>
+        <AnimatePresence>
+          {open && suggestions.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15 }}
+              className="absolute top-full left-0 right-0 mt-1 rounded-xl overflow-hidden z-20"
+              style={{ background: t.cardBg2, border: `1px solid ${t.cardBorder}`, boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+              {suggestions.map(cat => (
+                <button key={`${cat.type}-${cat.id}`} type="button"
+                  onMouseDown={() => selectItem(cat)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-sm transition-colors text-left"
+                  style={{ borderBottom: `1px solid ${t.divider}` }}
+                  onMouseEnter={e => e.currentTarget.style.background = t.rowHover}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase"
+                          style={{ background: cat.type === 'pack' ? 'rgba(212,160,23,0.15)' : 'rgba(224,30,55,0.12)',
+                                   color: cat.type === 'pack' ? '#d4a017' : '#e01e37' }}>
+                      {cat.type === 'pack' ? 'Pack' : 'Plat'}
+                    </span>
+                    <span style={{ color: t.text }}>{cat.name}</span>
+                  </div>
+                  <span className="text-xs font-semibold" style={{ color: '#d4a017' }}>
+                    {Number(cat.price).toLocaleString()} F
+                  </span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Price + Qty + Remove */}
+      <div className="flex items-center gap-2">
+        <input
+          value={item.price}
+          onChange={e => onUpdate(index, { ...item, name: query, price: e.target.value })}
+          placeholder="Prix (FCFA)"
+          type="number" min="0"
+          className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none"
+          style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }}
+        />
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => onUpdate(index, { ...item, name: query, qty: Math.max(1, (item.qty||1) - 1) })}
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'rgba(224,30,55,0.1)', border: '1px solid rgba(224,30,55,0.2)', color: '#e01e37' }}>
+            <Minus size={11} />
+          </button>
+          <span className="w-6 text-center text-sm font-bold" style={{ color: t.text }}>{item.qty || 1}</span>
+          <button type="button" onClick={() => onUpdate(index, { ...item, name: query, qty: (item.qty||1) + 1 })}
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'rgba(224,30,55,0.1)', border: '1px solid rgba(224,30,55,0.2)', color: '#e01e37' }}>
+            <Plus size={11} />
+          </button>
+        </div>
+        {canRemove && (
+          <button type="button" onClick={() => onRemove(index)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+            <Trash2 size={12} />
+          </button>
+        )}
+      </div>
+      {item.price && (
+        <p className="text-xs text-right" style={{ color: t.textFaint }}>
+          Sous-total: <span style={{ color: '#d4a017' }}>{(parseFloat(item.price) * (item.qty||1)).toLocaleString()} FCFA</span>
+        </p>
+      )}
+    </div>
+  )
+}
+
+/* ─── Walk-In Order Modal ─── */
 function WalkInModal({ onClose, onCreated, isDark }) {
   const t = ac(isDark)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
-  const [items, setItems] = useState([{ name: '', price: '' }])
+  const [items, setItems] = useState([{ name: '', price: '', qty: 1 }])
+  const [catalog, setCatalog] = useState([])
   const [loading, setLoading] = useState(false)
 
-  const addItem = () => setItems(prev => [...prev, { name: '', price: '' }])
-  const removeItem = (i) => setItems(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev)
-  const updateItem = (i, k, v) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [k]: v } : it))
+  useEffect(() => {
+    Promise.all([productsApi.list(), packsApi.list()]).then(([prodRes, packRes]) => {
+      const products = (Array.isArray(prodRes.data?.products) ? prodRes.data.products :
+                       Array.isArray(prodRes.data) ? prodRes.data : []).map(p => ({ ...p, type: 'product' }))
+      const packs = (Array.isArray(packRes.data?.packs) ? packRes.data.packs :
+                    Array.isArray(packRes.data) ? packRes.data : []).map(p => ({ ...p, type: 'pack' }))
+      setCatalog([...products, ...packs])
+    }).catch(() => {})
+  }, [])
 
-  const total = items.reduce((sum, it) => sum + (parseFloat(it.price) || 0), 0)
+  const addItem = () => setItems(prev => [...prev, { name: '', price: '', qty: 1 }])
+  const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i))
+  const updateItem = (i, vals) => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, ...vals } : it))
+
+  const total = items.reduce((sum, it) => sum + (parseFloat(it.price) || 0) * (it.qty || 1), 0)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -102,7 +229,7 @@ function WalkInModal({ onClose, onCreated, isDark }) {
         user_name: name.trim(),
         user_phone: phone.trim() || undefined,
         notes: notes.trim() || undefined,
-        items: items.map(it => ({ name: it.name.trim(), price: parseFloat(it.price), quantity: 1 })),
+        items: items.map(it => ({ name: it.name.trim(), price: parseFloat(it.price), quantity: it.qty || 1 })),
       })
       toast.success('Commande créée !')
       onCreated(res.data.order)
@@ -121,19 +248,20 @@ function WalkInModal({ onClose, onCreated, isDark }) {
         animate={{ scale: 1, y: 0, opacity: 1 }}
         exit={{ scale: 0.95, y: 20, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl"
+        className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl"
         style={{ background: t.modalBg, border: `1px solid ${t.modalBorder}`, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5"
-             style={{ borderBottom: `1px solid ${t.divider}` }}>
+        <div className="flex items-center justify-between px-6 py-5 sticky top-0 z-10"
+             style={{ borderBottom: `1px solid ${t.divider}`, background: t.modalBg }}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-rouge/15 border border-rouge/30 flex items-center justify-center">
               <ShoppingBag size={16} className="text-rouge" />
             </div>
             <div>
               <h3 className="font-playfair text-base font-bold" style={{ color: t.text }}>Commande sur place</h3>
-              <p className="text-xs" style={{ color: t.textMuted }}>Client physique (Walk-in)</p>
+              <p className="text-xs" style={{ color: t.textMuted }}>
+                {catalog.length > 0 ? `${catalog.length} articles dans le catalogue` : 'Chargement du catalogue…'}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
@@ -143,7 +271,6 @@ function WalkInModal({ onClose, onCreated, isDark }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Customer info */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>
@@ -165,43 +292,28 @@ function WalkInModal({ onClose, onCreated, isDark }) {
             </div>
           </div>
 
-          {/* Items */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[10px] uppercase tracking-widest" style={{ color: t.textMuted }}>Articles *</label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: t.textMuted }}>
+                Articles *
+              </label>
               <motion.button type="button" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                 onClick={addItem}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold"
                 style={{ background: 'rgba(224,30,55,0.12)', border: '1px solid rgba(224,30,55,0.25)', color: '#e01e37' }}>
-                <Plus size={12} /> Ajouter
+                <Plus size={12} /> Ajouter un article
               </motion.button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {items.map((item, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <input value={item.name} onChange={e => updateItem(i, 'name', e.target.value)}
-                    placeholder="Nom du plat"
-                    className="flex-1 px-3 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }} />
-                  <input value={item.price} onChange={e => updateItem(i, 'price', e.target.value)}
-                    placeholder="Prix" type="number" min="0"
-                    className="w-24 px-3 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }} />
-                  {items.length > 1 && (
-                    <button type="button" onClick={() => removeItem(i)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
+                <CatalogItemRow key={i} item={item} index={i} catalog={catalog} t={t}
+                  onUpdate={updateItem} onRemove={removeItem} canRemove={items.length > 1} />
               ))}
             </div>
           </div>
 
-          {/* Notes */}
           <div>
-            <label className="text-[10px] uppercase tracking-widets mb-1.5 block" style={{ color: t.textMuted }}>
+            <label className="text-[10px] uppercase tracking-widest mb-1.5 block" style={{ color: t.textMuted }}>
               Notes
             </label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
@@ -210,11 +322,15 @@ function WalkInModal({ onClose, onCreated, isDark }) {
               style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }} />
           </div>
 
-          {/* Total */}
           <div className="flex items-center justify-between px-4 py-3 rounded-xl"
                style={{ background: 'rgba(224,30,55,0.08)', border: '1px solid rgba(224,30,55,0.15)' }}>
-            <span className="text-sm font-semibold" style={{ color: t.textMuted }}>Total estimé</span>
-            <span className="font-playfair font-bold text-xl text-rouge">{total.toLocaleString()} FCFA</span>
+            <div>
+              <p className="text-xs mb-0.5" style={{ color: t.textMuted }}>
+                {items.length} article{items.length > 1 ? 's' : ''} · {items.reduce((s, it) => s + (it.qty||1), 0)} unité{items.reduce((s, it) => s + (it.qty||1), 0) > 1 ? 's' : ''}
+              </p>
+              <span className="text-sm font-semibold" style={{ color: t.textMuted }}>Total estimé</span>
+            </div>
+            <span className="font-playfair font-bold text-2xl text-rouge">{total.toLocaleString()} FCFA</span>
           </div>
 
           <div className="flex gap-3">
@@ -310,7 +426,6 @@ export default function AdminOrders() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -334,18 +449,14 @@ export default function AdminOrders() {
         </div>
       </motion.div>
 
-      {/* Filters */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
         className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: t.textMuted }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+          <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher une commande…"
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition-all"
-            style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }}
-          />
+            style={{ background: t.inputBg, border: `1px solid ${t.inputBorder}`, color: t.text }} />
         </div>
         <div className="flex gap-2 flex-wrap">
           {STATUSES.map(s => (
@@ -363,7 +474,6 @@ export default function AdminOrders() {
         </div>
       </motion.div>
 
-      {/* Table */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="rounded-xl overflow-hidden transition-colors duration-300"
         style={{ background: t.cardBg, border: `1px solid ${t.cardBorder}`, boxShadow: t.cardShadow }}>
@@ -411,9 +521,7 @@ export default function AdminOrders() {
                   </p>
                 </div>
 
-                <p className="text-sm" style={{ color: t.textMuted }}>
-                  {order.items?.length || 0} art.
-                </p>
+                <p className="text-sm" style={{ color: t.textMuted }}>{order.items?.length || 0} art.</p>
 
                 <p className="text-or font-semibold text-sm">
                   {order.total ? `${Number(order.total).toLocaleString()} F` : '–'}

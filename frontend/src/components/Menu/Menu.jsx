@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { Flame, X, Plus, Minus, CheckCircle, ShoppingBag } from 'lucide-react'
+import { Flame, X, Plus, Minus, CheckCircle, ShoppingBag, Truck, MapPin } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../context/AuthContext'
 import { ordersApi } from '../../utils/api'
@@ -57,22 +57,29 @@ const DISHES = [
 /* ─── Order Modal (module level, not inside another component) ─── */
 function OrderModal({ dish, user, onClose }) {
   const [qty, setQty] = useState(1)
+  const [deliveryType, setDeliveryType] = useState('dine-in')
+  const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
   const priceNum = parseInt(dish.price.replace(/\s/g, ''), 10)
-  const total = priceNum * qty
+  const deliveryFee = deliveryType === 'delivery' ? 1000 : 0
+  const total = priceNum * qty + deliveryFee
 
   const handleSubmit = async () => {
+    if (deliveryType === 'delivery' && !address.trim()) {
+      toast.error('Entrez votre adresse de livraison')
+      return
+    }
     setLoading(true)
     try {
       await ordersApi.create({
         user_name: user.name,
         user_email: user.email,
         items: [{ name: dish.name, price: priceNum, quantity: qty, type: 'product' }],
-        notes: notes.trim() || null,
-        delivery_type: 'dine-in',
+        notes: [notes.trim(), deliveryType === 'delivery' ? `Livraison: ${address}` : ''].filter(Boolean).join(' | ') || null,
+        delivery_type: deliveryType,
       })
       setSuccess(true)
       toast.success('Commande envoyée ! L\'admin va la confirmer.')
@@ -120,6 +127,32 @@ function OrderModal({ dish, user, onClose }) {
           <div className="p-5">
             {!success ? (
               <>
+                {/* Delivery type */}
+                <div className="flex gap-2 mb-5">
+                  {[{id:'dine-in',label:'Sur place',Icon:ShoppingBag},{id:'delivery',label:'Livraison +1 000F',Icon:Truck}].map(({id,label,Icon}) => (
+                    <button key={id} type="button" onClick={() => setDeliveryType(id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all"
+                      style={{
+                        background: deliveryType === id ? 'rgba(224,30,55,0.15)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${deliveryType === id ? 'rgba(224,30,55,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                        color: deliveryType === id ? '#e01e37' : 'rgba(255,255,255,0.4)',
+                      }}>
+                      <Icon size={12} /> {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Delivery address */}
+                {deliveryType === 'delivery' && (
+                  <div className="relative mb-5">
+                    <MapPin size={13} className="absolute left-3 top-3" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                    <input value={address} onChange={e => setAddress(e.target.value)}
+                      placeholder="Votre adresse de livraison…"
+                      className="w-full text-sm rounded-xl px-3 py-2.5 pl-9 focus:outline-none"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
+                  </div>
+                )}
+
                 {/* Quantity */}
                 <div className="flex items-center justify-between mb-5">
                   <span className="text-blanc/60 text-sm">Quantité</span>
