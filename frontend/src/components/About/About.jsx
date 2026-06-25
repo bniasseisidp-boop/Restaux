@@ -3,6 +3,7 @@ import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Award, Leaf, Flame } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useTheme } from '../../context/ThemeContext'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -20,6 +21,7 @@ const PHOTOS = [
 ]
 
 export default function About() {
+  const { isDark } = useTheme()
   const leftRef = useRef(null)
   const rightRef = useRef(null)
   const statsRef = useRef(null)
@@ -71,7 +73,7 @@ export default function About() {
             <motion.div
               whileHover={{ scale: 1.05 }}
               className="absolute bottom-4 left-4 rounded-2xl p-5 backdrop-blur"
-              style={{ background: 'rgba(10,10,10,0.92)', border: '1px solid rgba(224,30,55,0.3)', boxShadow: '0 4px 24px rgba(0,0,0,0.6)' }}>
+              style={{ background: isDark ? 'rgba(10,10,10,0.92)' : 'rgba(255,255,255,0.92)', border: '1px solid rgba(224,30,55,0.3)', boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}>
               <p className="text-rouge font-bold text-2xl font-playfair">+6</p>
               <p className="text-blanc/50 text-xs mt-1 tracking-widest uppercase">Années d'Excellence</p>
             </motion.div>
@@ -143,7 +145,7 @@ export default function About() {
             <motion.div
               key={stat.label}
               className="stat-item bg-noir-800 px-8 py-8 text-center group cursor-default rounded-2xl"
-              style={{ border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}
+              style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)'}`, boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.2)' : '0 4px 20px rgba(0,0,0,0.06)' }}
               whileHover={{
                 y: -4,
                 boxShadow: '0 12px 32px rgba(224,30,55,0.15), 0 4px 20px rgba(0,0,0,0.3)',

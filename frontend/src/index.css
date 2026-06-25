@@ -534,3 +534,59 @@ html.lenis {
 .theme-toggle.active .theme-toggle-knob {
   transform: translateX(18px);
 }
+
+/* ============================================================
+   LIGHT THEME — DIRECT UTILITY OVERRIDES
+   Unlayered CSS has higher cascade priority than @layer utilities.
+   These rules guarantee text + background adapt even if CSS variable
+   inheritance doesn't reach Tailwind's compiled utilities.
+   ============================================================ */
+
+/* ---- Text colors ---- */
+.light-theme .text-blanc                { color: #1a1611; }
+.light-theme .text-blanc-soft           { color: #2a2420; }
+.light-theme .text-blanc-muted          { color: #5a5450; }
+.light-theme .text-blanc\/5             { color: rgba(26,22,17,.05); }
+.light-theme .text-blanc\/8             { color: rgba(26,22,17,.08); }
+.light-theme .text-blanc\/10            { color: rgba(26,22,17,.10); }
+.light-theme .text-blanc\/15            { color: rgba(26,22,17,.15); }
+.light-theme .text-blanc\/20            { color: rgba(26,22,17,.20); }
+.light-theme .text-blanc\/25            { color: rgba(26,22,17,.25); }
+.light-theme .text-blanc\/30            { color: rgba(26,22,17,.30); }
+.light-theme .text-blanc\/35            { color: rgba(26,22,17,.35); }
+.light-theme .text-blanc\/40            { color: rgba(26,22,17,.40); }
+.light-theme .text-blanc\/45            { color: rgba(26,22,17,.45); }
+.light-theme .text-blanc\/50            { color: rgba(26,22,17,.50); }
+.light-theme .text-blanc\/55            { color: rgba(26,22,17,.55); }
+.light-theme .text-blanc\/60            { color: rgba(26,22,17,.60); }
+.light-theme .text-blanc\/65            { color: rgba(26,22,17,.65); }
+.light-theme .text-blanc\/70            { color: rgba(26,22,17,.70); }
+.light-theme .text-blanc\/75            { color: rgba(26,22,17,.75); }
+.light-theme .text-blanc\/80            { color: rgba(26,22,17,.80); }
+.light-theme .text-blanc\/90            { color: rgba(26,22,17,.90); }
+
+/* ---- Placeholder colors ---- */
+.light-theme .placeholder-blanc\/30::placeholder { color: rgba(26,22,17,.30); }
+.light-theme .placeholder-blanc\/40::placeholder { color: rgba(26,22,17,.40); }
+.light-theme .placeholder-blanc\/20::placeholder { color: rgba(26,22,17,.20); }
+
+/* ---- Background colors ---- */
+.light-theme .bg-noir                   { background-color: rgb(248,244,239); }
+.light-theme .bg-noir-900               { background-color: rgb(248,244,239); }
+.light-theme .bg-noir-800               { background-color: rgb(236,231,222); }
+.light-theme .bg-noir-700               { background-color: rgb(226,219,208); }
+.light-theme .bg-noir-600               { background-color: rgb(216,208,198); }
+.light-theme .bg-noir-500               { background-color: rgb(205,196,184); }
+
+/* ---- Border colors (white borders → soft dark) ---- */
+.light-theme .border-white\/5           { border-color: rgba(0,0,0,0.06); }
+.light-theme .border-white\/10          { border-color: rgba(0,0,0,0.09); }
+.light-theme .border-white\/\[0\.05\]   { border-color: rgba(0,0,0,0.06); }
+
+/* ---- White-opacity backgrounds (hover pills, glass, etc.) ---- */
+.light-theme .bg-white\/5               { background-color: rgba(0,0,0,0.04); }
+.light-theme .bg-white\/8               { background-color: rgba(0,0,0,0.06); }
+.light-theme .bg-white\/10              { background-color: rgba(0,0,0,0.07); }
+
+/* ---- Hero title (ensure "Le" reads as dark) ---- */
+.light-theme .hero-title-line           { color: #1a1611; }

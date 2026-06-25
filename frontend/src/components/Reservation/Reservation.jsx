@@ -7,6 +7,7 @@ import {
   Check, Sparkles, ArrowRight, CreditCard, Smartphone, ChevronLeft
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import api from '../../utils/api'
@@ -139,7 +140,7 @@ function SuccessCard({ form, user, reservation, onReset }) {
       {/* Ticket */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
         className="relative rounded-2xl mb-6 text-left overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #141414, #0d0d0d)', border: '1px solid rgba(16,185,129,0.2)' }}>
+        style={{ background: isDark ? 'linear-gradient(135deg, #141414, #0d0d0d)' : '#ffffff', border: '1px solid rgba(16,185,129,0.2)' }}>
         <div className="h-1" style={{ background: 'linear-gradient(90deg, #10b981, #d4a017, #10b981)' }} />
         <div className="px-6 py-4 space-y-2.5">
           {[
@@ -188,6 +189,7 @@ export default function Reservation() {
   const [submitting, setSubmitting] = useState(false)
   const [reservation, setReservation] = useState(null)
   const { user } = useAuth()
+  const { isDark } = useTheme()
   const sectionRef = useRef(null)
   const imageRef = useRef(null)
 
@@ -259,7 +261,7 @@ export default function Reservation() {
 
   if (step === 3) {
     return (
-      <section id="reservation" className="py-24" style={{ background: '#0a0a0a' }}>
+      <section id="reservation" className="py-24" style={{ background: isDark ? '#0a0a0a' : '#f0ece6' }}>
         <SuccessCard form={form} user={user} reservation={reservation}
           onReset={() => {
             setStep(1); setPaymentMethod(''); setPaymentReference(''); setReservation(null)
@@ -284,7 +286,7 @@ export default function Reservation() {
               <div className="absolute inset-0 rounded-2xl" style={{ background: 'linear-gradient(to right, rgba(10,10,10,0.3), transparent)' }} />
             </div>
             <div className="absolute bottom-6 left-6 right-6 rounded-2xl p-4"
-                 style={{ background: 'rgba(10,10,10,0.88)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 4px 24px rgba(0,0,0,0.4)' }}>
+                 style={{ background: isDark ? 'rgba(10,10,10,0.88)' : 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)'}`, boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}>
               <p className="text-blanc font-semibold text-sm mb-1">Ouvert tous les jours</p>
               <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>09h30 — 23h00 · DIEUPPEUL I, Dakar</p>
             </div>
